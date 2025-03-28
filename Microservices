@@ -1,0 +1,82 @@
+Microservices:
+-------------
+step1:
+******
+Name: wordpress
+AMI: Ubuntu (latest version)
+Instance Type: t2.micro
+Key Pair: Create or select an existing key pair (for SSH access)
+Security Group: http, https, ssh, mysql(Only from the MySQL instance private IP),tcp
+------------------------------------------------------
+Step-2:
+********
+Name: mysql
+Instance Type: t2.micro
+Security Group: Separate security group for MySQL(Allow inbound from WordPress Private IP)
+Step 3:Install and Configure MySQL on MySQL Instance
+*******
+3.1: Connect to MySQL EC2 Instance:
+ssh -i your-key.pem ubuntu@your-mysql-instance-public-ip
+3.2: Install MySQL Server:
+sudo apt update
+sudo apt install mysql-server -y
+3.3. Secure MySQL Installation
+sudo mysql_secure_installation
+
+* Set root password
+* Remove anonymous users
+*Disable remote root login
+*Remove test database
+
+3.4. Create WordPress Database & User
+sudo mysql -u root -p
+Inside MySQL shell, run:
+CREATE DATABASE wordpress_db;
+CREATE USER 'wp_user'@'%' IDENTIFIED BY 'yourpassword';
+GRANT ALL PRIVILEGES ON wordpress_db.* TO 'wp_user'@'%';
+FLUSH PRIVILEGES;
+EXIT;
+3.5. Allow Remote Connections: (Edit the MySQL config:)
+sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf
+Find the line:
+bind-address = 127.0.0.1
+Change to: bind-address = 0.0.0.0
+Restart MySQL: 
+sudo systemctl restart mysql
+----------------------------------------------------------------------------------
+Step 4: Install and Configure WordPress on WordPress Instance
+4.1. Connect to WordPress EC2 Instance
+ssh -i your-key.pem ubuntu@your-wordpress-instance-public-ip
+4.2. Install Apache, PHP, and Dependencies
+sudo apt update
+sudo apt install apache2 php php-mysql libapache2-mod-php unzip -y
+4.3. Download and Extract WordPress
+cd /var/www/html
+sudo wget https://wordpress.org/latest.zip
+sudo unzip latest.zip
+sudo mv wordpress/* .
+sudo rm -rf wordpress latest.zip
+
+4.4. Configure WordPress Database Connection
+sudo cp wp-config-sample.php wp-config.php
+sudo nano wp-config.php
+Modify these lines with your database info:
+define('DB_NAME', 'wordpress_db');
+define('DB_USER', 'wp_user');
+define('DB_PASSWORD', 'yourpassword');
+define('DB_HOST', 'your-mysql-instance-private-ip');
+
+4.5. Set Permissions
+sudo chown -R www-data:www-data /var/www/html
+sudo chmod -R 755 /var/www/html
+
+4.6. Restart Apache
+sudo systemctl restart apache2
+
+Step 5: Access WordPress & Create Welcome Page
+1. http://your-wordpress-instance-public-ip
+2. Complete WordPress installation (choose admin credentials)
+3. Log in → Pages → Add New
+4. Title it Welcome → Add content
+5. Go to Settings → Reading → Set "Welcome" as Homepage
+6. Save & Publish
